@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Chi-Square Calculator
+Genetics 1003: Chi-Square Calculator
 
 This script calculates the chi-square statistic and p-value for:
 1. Goodness-of-fit tests
@@ -17,7 +17,7 @@ Special handling for zero expected frequencies:
 - If expected = 0 and observed = 0: contribution to chi-square is 0
 - If expected = 0 and observed ≠ 0: chi-square statistic is infinity (reject hypothesis)
 
-Author: AI Assistant
+Author: AI Assistants
 Date: 2025
 """
 
@@ -608,9 +608,9 @@ class HardyWeinbergCalculator:
     def _normalize_genotype_keys(self):
         """Normalize genotype keys to standard format (AA, Aa, aa)."""
         keys = list(self.genotype_counts.keys())
-        
+
         # Check if already in standard format
-        standard_keys = {'AA', 'Aa', 'aa'}
+        standard_keys = {"AA", "Aa", "aa"}
         if set(keys) == standard_keys:
             return
 
@@ -618,11 +618,7 @@ class HardyWeinbergCalculator:
         if len(keys) == 3:
             # Assume order: dominant_homozygous, heterozygous, recessive_homozygous
             values = list(self.genotype_counts.values())
-            self.genotype_counts = {
-                'AA': values[0],
-                'Aa': values[1],
-                'aa': values[2]
-            }
+            self.genotype_counts = {"AA": values[0], "Aa": values[1], "aa": values[2]}
 
     def calculate_allele_frequencies(self) -> dict:
         """
@@ -631,19 +627,19 @@ class HardyWeinbergCalculator:
         Returns:
             Dictionary with allele frequencies {'p': freq_A, 'q': freq_a}
         """
-        n_AA = self.genotype_counts['AA']
-        n_Aa = self.genotype_counts['Aa']
-        n_aa = self.genotype_counts['aa']
-        
+        n_AA = self.genotype_counts["AA"]
+        n_Aa = self.genotype_counts["Aa"]
+        n_aa = self.genotype_counts["aa"]
+
         total = n_AA + n_Aa + n_aa
-        
+
         # Calculate allele frequencies using allele counting method
         # Frequency of A allele (p) = (2*AA + Aa) / (2*total)
         # Frequency of a allele (q) = (2*aa + Aa) / (2*total)
         freq_A = (2 * n_AA + n_Aa) / (2 * total)
         freq_a = (2 * n_aa + n_Aa) / (2 * total)
-        
-        return {'p': freq_A, 'q': freq_a}
+
+        return {"p": freq_A, "q": freq_a}
 
     def calculate_expected_genotypes(self) -> dict:
         """
@@ -653,21 +649,17 @@ class HardyWeinbergCalculator:
             Dictionary with expected genotype counts {'AA': count, 'Aa': count, 'aa': count}
         """
         allele_freqs = self.calculate_allele_frequencies()
-        p = allele_freqs['p']
-        q = allele_freqs['q']
-        
+        p = allele_freqs["p"]
+        q = allele_freqs["q"]
+
         total = sum(self.genotype_counts.values())
-        
+
         # Under Hardy-Weinberg equilibrium:
         # Frequency of AA = p²
         # Frequency of Aa = 2pq
         # Frequency of aa = q²
-        expected = {
-            'AA': p * p * total,
-            'Aa': 2 * p * q * total,
-            'aa': q * q * total
-        }
-        
+        expected = {"AA": p * p * total, "Aa": 2 * p * q * total, "aa": q * q * total}
+
         return expected
 
     def calculate_chi_square(self) -> float:
@@ -680,7 +672,7 @@ class HardyWeinbergCalculator:
         expected = self.calculate_expected_genotypes()
         chi_square = 0.0
 
-        for genotype in ['AA', 'Aa', 'aa']:
+        for genotype in ["AA", "Aa", "aa"]:
             obs = self.genotype_counts[genotype]
             exp = expected[genotype]
 
@@ -697,7 +689,7 @@ class HardyWeinbergCalculator:
     def calculate_degrees_of_freedom(self) -> int:
         """
         Calculate degrees of freedom for Hardy-Weinberg test.
-        
+
         For Hardy-Weinberg equilibrium test:
         df = number of genotypes - number of alleles = 3 - 2 = 1
 
@@ -787,7 +779,11 @@ class HardyWeinbergCalculator:
             "expected_genotypes": expected,
             "allele_frequencies": allele_freqs,
             "significance_level": 0.05,
-            "result": "Reject H0 (not in Hardy-Weinberg equilibrium)" if p_value < 0.05 else "Fail to reject H0 (in Hardy-Weinberg equilibrium)",
+            "result": (
+                "Reject H0 (not in Hardy-Weinberg equilibrium)"
+                if p_value < 0.05
+                else "Fail to reject H0 (in Hardy-Weinberg equilibrium)"
+            ),
         }
 
     def print_results(self, results: dict):
@@ -804,8 +800,8 @@ class HardyWeinbergCalculator:
 
         print("\nAllele Frequencies:")
         print("-" * 40)
-        p = results['allele_frequencies']['p']
-        q = results['allele_frequencies']['q']
+        p = results["allele_frequencies"]["p"]
+        q = results["allele_frequencies"]["q"]
         print(f"Frequency of A allele (p): {p:.4f}")
         print(f"Frequency of a allele (q): {q:.4f}")
         print(f"p + q = {p + q:.4f}")
@@ -814,15 +810,15 @@ class HardyWeinbergCalculator:
         print("-" * 40)
         print("Genotype    Observed    Expected    Difference")
         print("-" * 40)
-        
-        for genotype in ['AA', 'Aa', 'aa']:
-            obs = results['observed_genotypes'][genotype]
-            exp = results['expected_genotypes'][genotype]
+
+        for genotype in ["AA", "Aa", "aa"]:
+            obs = results["observed_genotypes"][genotype]
+            exp = results["expected_genotypes"][genotype]
             diff = obs - exp
             print(f"{genotype:8}    {obs:8.0f}    {exp:8.2f}    {diff:8.2f}")
 
-        total_obs = sum(results['observed_genotypes'].values())
-        total_exp = sum(results['expected_genotypes'].values())
+        total_obs = sum(results["observed_genotypes"].values())
+        total_exp = sum(results["expected_genotypes"].values())
         print("-" * 40)
         print(f"Total       {total_obs:8.0f}    {total_exp:8.2f}")
 
@@ -873,8 +869,14 @@ Examples:
 
     parser.add_argument("--yates", action="store_true", help="Use Yates' continuity correction for 2×2 table")
 
-    parser.add_argument("--hw", "--hardy-weinberg", nargs=3, type=float, dest="hardy_weinberg",
-                       help="Hardy-Weinberg equilibrium test (provide counts for AA, Aa, aa)")
+    parser.add_argument(
+        "--hw",
+        "--hardy-weinberg",
+        nargs=3,
+        type=float,
+        dest="hardy_weinberg",
+        help="Hardy-Weinberg equilibrium test (provide counts for AA, Aa, aa)",
+    )
 
     parser.add_argument("-a", "--alpha", type=float, default=0.05, help="Significance level (default: 0.05)")
 
@@ -883,21 +885,21 @@ Examples:
     try:
         # Check if using Hardy-Weinberg equilibrium test
         if args.hardy_weinberg:
-            genotype_counts = {
-                'AA': args.hardy_weinberg[0],
-                'Aa': args.hardy_weinberg[1],
-                'aa': args.hardy_weinberg[2]
-            }
+            genotype_counts = {"AA": args.hardy_weinberg[0], "Aa": args.hardy_weinberg[1], "aa": args.hardy_weinberg[2]}
             calculator = HardyWeinbergCalculator(genotype_counts=genotype_counts)
-            
+
             # Perform test
             results = calculator.perform_test()
             results["significance_level"] = args.alpha
-            results["result"] = "Reject H0 (not in Hardy-Weinberg equilibrium)" if results["p_value"] < args.alpha else "Fail to reject H0 (in Hardy-Weinberg equilibrium)"
-            
+            results["result"] = (
+                "Reject H0 (not in Hardy-Weinberg equilibrium)"
+                if results["p_value"] < args.alpha
+                else "Fail to reject H0 (in Hardy-Weinberg equilibrium)"
+            )
+
             # Print results
             calculator.print_results(results)
-        
+
         # Check if using 2×2 contingency table mode
         elif args.table:
             # Create 2×2 table
@@ -1024,7 +1026,7 @@ def run_examples():
     print("H0: Population is in Hardy-Weinberg equilibrium")
     print("H1: Population is not in Hardy-Weinberg equilibrium")
 
-    genotypes1 = {'AA': 36, 'Aa': 48, 'aa': 16}  # Follows HW equilibrium (p=0.6, q=0.4)
+    genotypes1 = {"AA": 36, "Aa": 48, "aa": 16}  # Follows HW equilibrium (p=0.6, q=0.4)
     hw_calc1 = HardyWeinbergCalculator(genotype_counts=genotypes1)
     hw_results1 = hw_calc1.perform_test()
     hw_calc1.print_results(hw_results1)
@@ -1034,7 +1036,7 @@ def run_examples():
     print("H0: Population is in Hardy-Weinberg equilibrium")
     print("H1: Population is not in Hardy-Weinberg equilibrium")
 
-    genotypes2 = {'AA': 50, 'Aa': 30, 'aa': 20}  # Deviates from HW equilibrium
+    genotypes2 = {"AA": 50, "Aa": 30, "aa": 20}  # Deviates from HW equilibrium
     hw_calc2 = HardyWeinbergCalculator(genotype_counts=genotypes2)
     hw_results2 = hw_calc2.perform_test()
     hw_calc2.print_results(hw_results2)
