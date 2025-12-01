@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 """
-Chi-Square Goodness-of-Fit Calculator
+Chi-Square Calculator
 
-This script calculates the chi-square statistic and p-value for goodness-of-fit tests.
+This script calculates the chi-square statistic and p-value for:
+1. Goodness-of-fit tests
+2. 2×2 contingency table tests (independence/association)
+
 It can handle both equal and specified expected frequencies, including special cases
 where expected frequencies are zero.
+
+For 2×2 contingency tables, it supports:
+- Standard chi-square test
+- Yates' continuity correction (for small expected frequencies)
 
 Special handling for zero expected frequencies:
 - If expected = 0 and observed = 0: contribution to chi-square is 0
@@ -289,47 +296,350 @@ class ChiSquareCalculator:
         print("=" * 60)
 
 
+class ContingencyTableCalculator:
+    """A class to perform chi-square test for 2×2 contingency tables."""
+
+    def __init__(self, table: Sequence[Sequence[Union[int, float]]]):
+        """
+        Initialize the calculator with a 2×2 contingency table.
+
+        Args:
+            table: A 2×2 list/array representing the contingency table
+                   Format: [[a, b], [c, d]]
+        """
+        self.table = [list(row) for row in table]
+        self._validate_input()
+        self.a, self.b = self.table[0]
+        self.c, self.d = self.table[1]
+
+    def _validate_input(self):
+        """Validate the input contingency table."""
+        if len(self.table) != 2:
+            raise ValueError("Contingency table must have exactly 2 rows")
+        if len(self.table[0]) != 2 or len(self.table[1]) != 2:
+            raise ValueError("Contingency table must have exactly 2 columns")
+        
+        for row in self.table:
+            for value in row:
+                if value < 0:
+                    raise ValueError("All values in contingency table must be non-negative")
+
+    def calculate_marginals(self) -> dict:
+        """Calculate row and column marginal totals."""
+        row1_total = self.a + self.b
+        row2_total = self.c + self.d
+        col1_total = self.a + self.c
+        col2_total = self.b + self.d
+        grand_total = self.a + self.b + self.c + self.d
+
+        return {
+            "row1_total": row1_total,
+            "row2_total": row2_total,
+            "col1_total": col1_total,
+            "col2_total": col2_total,
+            "grand_total": grand_total,
+        }
+
+    def calculate_expected(self) -> list:
+        """Calculate expected frequencies for each cell."""
+        marginals = self.calculate_marginals()
+        n = marginals["grand_total"]
+
+        if n == 0:
+            raise ValueError("Grand total cannot be zero")
+
+        expected = [
+            [
+                marginals["row1_total"] * marginals["col1_total"] / n,
+                marginals["row1_total"] * marginals["col2_total"] / n,
+            ],
+            [
+                marginals["row2_total"] * marginals["col1_total"] / n,
+                marginals["row2_total"] * marginals["col2_total"] / n,
+            ],
+        ]
+
+        return expected
+
+    def calculate_chi_square(self) -> float:
+        """
+        Calculate the chi-square statistic for the 2×2 contingency table.
+
+        Returns:
+            The chi-square statistic value
+        """
+        expected = self.calculate_expected()
+        chi_square = 0.0
+
+        for i in range(2):
+            for j in range(2):
+                obs = self.table[i][j]
+                exp = expected[i][j]
+
+                if exp == 0:
+                    if obs == 0:
+                        continue
+                    else:
+                        return float("inf")
+                else:
+                    chi_square += ((obs - exp) ** 2) / exp
+
+        return chi_square
+
+    def calculate_chi_square_with_correction(self) -> float:
+        """
+        Calculate the chi-square statistic with Yates' continuity correction.
+        Recommended when any expected frequency is less than 5.
+
+        Returns:
+            The chi-square statistic value with Yates' correction
+        """
+        expected = self.calculate_expected()
+        chi_square = 0.0
+
+        for i in range(2):
+            for j in range(2):
+                obs = self.table[i][j]
+                exp = expected[i][j]
+
+                if exp == 0:
+                    if obs == 0:
+                        continue
+                    else:
+                        return float("inf")
+                else:
+                    # Apply Yates' correction: subtract 0.5 from |O - E|
+                    corrected_diff = abs(obs - exp) - 0.5
+                    if corrected_diff < 0:
+                        corrected_diff = 0
+                    chi_square += (corrected_diff ** 2) / exp
+
+        return chi_square
+
+    def calculate_degrees_of_freedom(self) -> int:
+        """
+        Calculate degrees of freedom for 2×2 contingency table.
+
+        Returns:
+            Degrees of freedom (always 1 for 2×2 table)
+        """
+        return 1
+
+    def _log_gamma(self, x: float) -> float:
+        """Calculate log gamma function using Lanczos approximation."""
+        if x < 0.5:
+            return math.log(math.pi) - math.log(math.sin(math.pi * x)) - self._log_gamma(1.0 - x)
+
+        g = 7
+        c = [
+            0.99999999999980993,
+            676.5203681218851,
+            -1259.1392167224028,
+            771.32342877765313,
+            -176.61502916214059,
+            12.507343278686905,
+            -0.13857109526572012,
+            9.9843695780195716e-6,
+            1.5056327351493116e-7,
+        ]
+
+        x -= 1
+        a = c[0]
+        for i in range(1, g + 2):
+            a += c[i] / (x + i)
+
+        t = x + g + 0.5
+        return 0.5 * math.log(2 * math.pi) + (x + 0.5) * math.log(t) - t + math.log(a)
+
+    def _chi_square_p_value(self, chi_square: float, df: int) -> float:
+        """Calculate p-value for chi-square distribution."""
+        if chi_square <= 0:
+            return 1.0
+
+        transformed = (chi_square / df) ** (1 / 3)
+        mean = 1 - 2 / (9 * df)
+        std_dev = math.sqrt(2 / (9 * df))
+
+        z_score = (transformed - mean) / std_dev
+        return 1 - self._normal_cdf(z_score)
+
+    def _normal_cdf(self, x: float) -> float:
+        """Calculate standard normal CDF using error function."""
+        return 0.5 * (1 + math.erf(x / math.sqrt(2)))
+
+    def calculate_p_value(self, chi_square: float) -> float:
+        """
+        Calculate the p-value for the chi-square statistic.
+
+        Args:
+            chi_square: The chi-square statistic value
+
+        Returns:
+            The p-value
+        """
+        if chi_square < 0:
+            raise ValueError("Chi-square statistic cannot be negative")
+
+        if math.isinf(chi_square):
+            return 0.0
+
+        return self._chi_square_p_value(chi_square, 1)
+
+    def should_use_correction(self) -> bool:
+        """
+        Check if Yates' continuity correction should be used.
+        Recommended when any expected frequency is less than 5.
+
+        Returns:
+            True if correction should be used, False otherwise
+        """
+        expected = self.calculate_expected()
+        for row in expected:
+            for exp in row:
+                if exp < 5:
+                    return True
+        return False
+
+    def perform_test(self, use_correction: Optional[bool] = None) -> dict:
+        """
+        Perform the complete chi-square test for independence.
+
+        Args:
+            use_correction: Whether to use Yates' correction. If None, automatically
+                          determines based on expected frequencies.
+
+        Returns:
+            Dictionary containing test results
+        """
+        expected = self.calculate_expected()
+        
+        # Determine if correction should be used
+        if use_correction is None:
+            use_correction = self.should_use_correction()
+
+        if use_correction:
+            chi_square = self.calculate_chi_square_with_correction()
+        else:
+            chi_square = self.calculate_chi_square()
+
+        df = self.calculate_degrees_of_freedom()
+        p_value = self.calculate_p_value(chi_square)
+        marginals = self.calculate_marginals()
+
+        return {
+            "chi_square_statistic": chi_square,
+            "degrees_of_freedom": df,
+            "p_value": p_value,
+            "observed_table": self.table,
+            "expected_table": expected,
+            "marginals": marginals,
+            "yates_correction_used": use_correction,
+            "significance_level": 0.05,
+            "result": "Reject H0 (variables are associated)" if p_value < 0.05 else "Fail to reject H0 (variables are independent)",
+        }
+
+    def print_results(self, results: dict):
+        """Print the test results in a formatted way."""
+        print("\n" + "=" * 60)
+        print("CHI-SQUARE TEST FOR 2×2 CONTINGENCY TABLE")
+        print("=" * 60)
+
+        print(f"Chi-square statistic: {results['chi_square_statistic']:.4f}")
+        if results['yates_correction_used']:
+            print("  (with Yates' continuity correction)")
+        print(f"Degrees of freedom: {results['degrees_of_freedom']}")
+        print(f"P-value: {results['p_value']:.6f}")
+        print(f"Significance level (α): {results['significance_level']}")
+        print(f"Conclusion: {results['result']}")
+
+        print("\nObserved Frequencies:")
+        print("-" * 40)
+        obs = results["observed_table"]
+        print("          Column 1    Column 2    Total")
+        print(f"Row 1     {obs[0][0]:8.0f}    {obs[0][1]:8.0f}    {results['marginals']['row1_total']:8.0f}")
+        print(f"Row 2     {obs[1][0]:8.0f}    {obs[1][1]:8.0f}    {results['marginals']['row2_total']:8.0f}")
+        print(f"Total     {results['marginals']['col1_total']:8.0f}    {results['marginals']['col2_total']:8.0f}    {results['marginals']['grand_total']:8.0f}")
+
+        print("\nExpected Frequencies:")
+        print("-" * 40)
+        exp = results["expected_table"]
+        print("          Column 1    Column 2")
+        print(f"Row 1     {exp[0][0]:8.2f}    {exp[0][1]:8.2f}")
+        print(f"Row 2     {exp[1][0]:8.2f}    {exp[1][1]:8.2f}")
+
+        print("=" * 60)
+
+
 def main():
     """Main function to run the chi-square calculator."""
     parser = argparse.ArgumentParser(
-        description="Chi-Square Goodness-of-Fit Calculator",
+        description="Chi-Square Calculator (Goodness-of-Fit and 2×2 Contingency Table)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Equal expected frequencies
+  # Goodness-of-Fit: Equal expected frequencies
   python chi_square_calculator.py -o 10 15 20 25
   
-  # Specified expected frequencies
+  # Goodness-of-Fit: Specified expected frequencies
   python chi_square_calculator.py -o 10 15 20 25 -e 12 14 18 26
   
-  # Specified expected proportions
+  # Goodness-of-Fit: Specified expected proportions
   python chi_square_calculator.py -o 45 55 -p 0.5 0.5
+  
+  # 2×2 Contingency Table
+  python chi_square_calculator.py -t 20 10 5 15
+  (Format: a b c d for table [[a, b], [c, d]])
+  
+  # 2×2 Contingency Table with Yates' correction
+  python chi_square_calculator.py -t 20 10 5 15 --yates
         """,
     )
 
-    parser.add_argument("-o", "--observed", nargs="+", type=float, required=True, help="Observed frequencies")
+    parser.add_argument("-o", "--observed", nargs="+", type=float, help="Observed frequencies for goodness-of-fit test")
 
     parser.add_argument("-e", "--expected", nargs="+", type=float, help="Expected frequencies")
 
     parser.add_argument("-p", "--proportions", nargs="+", type=float, help="Expected proportions (must sum to 1.0)")
+
+    parser.add_argument("-t", "--table", nargs=4, type=float, help="2×2 contingency table values (a b c d)")
+
+    parser.add_argument("--yates", action="store_true", help="Use Yates' continuity correction for 2×2 table")
 
     parser.add_argument("-a", "--alpha", type=float, default=0.05, help="Significance level (default: 0.05)")
 
     args = parser.parse_args()
 
     try:
-        # Create calculator instance
-        calculator = ChiSquareCalculator(
-            observed=args.observed, expected=args.expected, expected_proportions=args.proportions
-        )
+        # Check if using 2×2 contingency table mode
+        if args.table:
+            # Create 2×2 table
+            table = [[args.table[0], args.table[1]], [args.table[2], args.table[3]]]
+            calculator = ContingencyTableCalculator(table=table)
+            
+            # Perform test
+            results = calculator.perform_test(use_correction=args.yates if args.yates else None)
+            results["significance_level"] = args.alpha
+            results["result"] = "Reject H0 (variables are associated)" if results["p_value"] < args.alpha else "Fail to reject H0 (variables are independent)"
+            
+            # Print results
+            calculator.print_results(results)
+        
+        elif args.observed:
+            # Goodness-of-fit test mode
+            calculator = ChiSquareCalculator(
+                observed=args.observed, expected=args.expected, expected_proportions=args.proportions
+            )
 
-        # Perform test
-        results = calculator.perform_test()
-        results["significance_level"] = args.alpha
-        results["result"] = "Reject H0" if results["p_value"] < args.alpha else "Fail to reject H0"
+            # Perform test
+            results = calculator.perform_test()
+            results["significance_level"] = args.alpha
+            results["result"] = "Reject H0" if results["p_value"] < args.alpha else "Fail to reject H0"
 
-        # Print results
-        calculator.print_results(results)
+            # Print results
+            calculator.print_results(results)
+        
+        else:
+            parser.error("Either -o/--observed or -t/--table must be provided")
 
     except ValueError as e:
         print(f"Error: {e}")
@@ -395,6 +705,27 @@ def run_examples():
     calculator5 = ChiSquareCalculator(observed=observed_nonzero, expected=expected_nonzero)
     results5 = calculator5.perform_test()
     calculator5.print_results(results5)
+
+    # Example 6: 2×2 Contingency Table - Treatment effectiveness
+    print("\nExample 6: 2×2 Contingency Table - Testing treatment effectiveness")
+    print("H0: Treatment and outcome are independent")
+    print("H1: Treatment and outcome are associated")
+    print("Table: [[Treatment Success, Treatment Failure], [Control Success, Control Failure]]")
+
+    table1 = [[60, 40], [30, 70]]  # Treatment group vs Control group
+    contingency_calc1 = ContingencyTableCalculator(table=table1)
+    contingency_results1 = contingency_calc1.perform_test()
+    contingency_calc1.print_results(contingency_results1)
+
+    # Example 7: 2×2 Contingency Table with small expected frequencies
+    print("\nExample 7: 2×2 Contingency Table - Small sample (Yates' correction)")
+    print("H0: Gender and preference are independent")
+    print("H1: Gender and preference are associated")
+
+    table2 = [[8, 12], [4, 6]]  # Small sample size
+    contingency_calc2 = ContingencyTableCalculator(table=table2)
+    contingency_results2 = contingency_calc2.perform_test()
+    contingency_calc2.print_results(contingency_results2)
 
 
 if __name__ == "__main__":
