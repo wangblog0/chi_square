@@ -1346,4 +1346,4 @@ if __name__ == "__main__":
     if len(sys.argv) == 1:
         run_examples()
     else:
-        exit(main())
+        sys.exit(main())
