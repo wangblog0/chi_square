@@ -1086,8 +1086,11 @@ Examples:
   genetics1003 -t 20 10 5 15
   (Format: row1_col1 row1_col2 row2_col1 row2_col2)
 
-  # 2×2 Contingency Table with Yates' correction
+  # 2×2 Contingency Table with Yates' correction (force use)
   genetics1003 -t 20 10 5 15 --yates
+  
+  # 2×2 Contingency Table without auto Yates' correction (disable)
+  genetics1003 -t 4 20 20 99 --no-auto-yates
   
   # 2×3 Contingency Table (automatic detection)
   genetics1003 -t 20 10 15 5 8 12 --rows 2 --cols 3
@@ -1114,7 +1117,13 @@ Examples:
 
     parser.add_argument("--cols", type=int, help="Number of columns in contingency table (default: auto-detect for 2×2)")
 
-    parser.add_argument("--yates", action="store_true", help="Use Yates' continuity correction for 2×2 table")
+    parser.add_argument("--yates", action="store_true", help="Force use Yates' continuity correction for 2×2 table")
+
+    parser.add_argument(
+        "--no-auto-yates",
+        action="store_true",
+        help="Disable automatic Yates' correction (even when expected frequency < 5)",
+    )
 
     parser.add_argument(
         "--hw",
@@ -1177,12 +1186,22 @@ Examples:
                     idx += 1
                 table.append(row)
             
-            # Use specialized 2×2 calculator if applicable and Yates correction requested
-            if args.rows == 2 and args.cols == 2 and args.yates:
+            # Use specialized 2×2 calculator for 2×2 tables (supports Yates correction)
+            if args.rows == 2 and args.cols == 2:
                 calculator = ContingencyTableCalculator(table=table)
-                results = calculator.perform_test(use_correction=args.yates)
+                # Determine use_correction based on flags
+                if args.yates:
+                    # Force use correction
+                    use_correction = True
+                elif args.no_auto_yates:
+                    # Disable auto correction
+                    use_correction = False
+                else:
+                    # Auto-detect based on expected frequencies
+                    use_correction = None
+                results = calculator.perform_test(use_correction=use_correction)
             else:
-                # Use general R×C calculator
+                # Use general R×C calculator for non-2×2 tables
                 calculator = GeneralContingencyTableCalculator(table=table)
                 results = calculator.perform_test()
             
