@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "genetics1003"
-version = "2.1.0"
+version = "2.1.1"
 description = "Chi-Square Calculator for Genetics and Statistics (Goodness-of-Fit, Contingency Tables, Hardy-Weinberg)"
 readme = "README.md"
 authors = [
