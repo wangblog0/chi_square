@@ -1074,30 +1074,30 @@ def main():
         epilog="""
 Examples:
   # Goodness-of-Fit: Equal expected frequencies
-  python genetics1003.py -o 10 15 20 25
+  genetics1003 -o 10 15 20 25
 
   # Goodness-of-Fit: Specified expected frequencies
-  python genetics1003.py -o 10 15 20 25 -e 12 14 18 26
+  genetics1003 -o 10 15 20 25 -e 12 14 18 26
 
   # Goodness-of-Fit: Specified expected proportions
-  python genetics1003.py -o 45 55 -p 0.5 0.5
+  genetics1003 -o 45 55 -p 0.5 0.5
 
   # 2×2 Contingency Table (automatic detection)
-  python genetics1003.py -t 20 10 5 15
+  genetics1003 -t 20 10 5 15
   (Format: row1_col1 row1_col2 row2_col1 row2_col2)
 
   # 2×2 Contingency Table with Yates' correction
-  python genetics1003.py -t 20 10 5 15 --yates
+  genetics1003 -t 20 10 5 15 --yates
   
   # 2×3 Contingency Table (automatic detection)
-  python genetics1003.py -t 20 10 15 5 8 12 --rows 2 --cols 3
+  genetics1003 -t 20 10 15 5 8 12 --rows 2 --cols 3
   (Format: all values row by row, specify --rows and --cols)
   
   # 3×3 Contingency Table (automatic detection)
-  python genetics1003.py -t 10 15 20 5 8 12 7 9 14 --rows 3 --cols 3
+  genetics1003 -t 10 15 20 5 8 12 7 9 14 --rows 3 --cols 3
   
   # Hardy-Weinberg Equilibrium Test
-  python genetics1003.py --hw 50 40 10
+  genetics1003 --hw 50 40 10
   (Format: AA Aa aa counts)
         """,
     )
