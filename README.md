@@ -3,8 +3,16 @@
 一个功能完整的Python卡方检验计算器，支持：
 
 1. **拟合优度检验** (Goodness-of-fit test)
-2. **2×2列联表独立性检验** (2×2 Contingency table test)
+2. **m×n列联表独立性检验** (m×n Contingency table test) - 已扩展支持任意大小
 3. **哈温平衡检验** (Hardy-Weinberg Equilibrium test)
+
+## 更新说明
+
+### 2025年12月更新
+- ✅ **扩展列联表支持**：从仅支持2×2表扩展到支持任意m×n大小的列联表
+- ✅ **移除Yates校正**：根据要求不再使用Yates连续性校正
+- ✅ **增强命令行接口**：支持分号分隔的行格式，便于输入大型表格
+- ✅ **保持向后兼容**：仍然支持传统的2×2表格式的输入
 
 ## 功能特点
 
@@ -19,14 +27,15 @@
 - ✅ 数据输入验证
 - ✅ 支持零期望频数的特殊处理
 
-### 2×2列联表检验
+### m×n列联表检验
 
 - ✅ 标准卡方检验
-- ✅ Yates连续性校正（适用于小样本）
-- ✅ 自动判断是否需要校正
+- ✅ 支持任意大小的列联表（m×n）
 - ✅ 计算边际总计
 - ✅ 计算期望频数
 - ✅ 显示观察频数与期望频数对比
+- ✅ 正确的自由度计算：(行数-1) × (列数-1)
+- ✅ 不再使用Yates连续性校正
 
 ### 哈温平衡检验
 
@@ -75,17 +84,17 @@ python chi_square_calculator.py -o 10 15 20 25 -e 12 14 18 26
 python chi_square_calculator.py -o 45 55 -p 0.5 0.5
 ```
 
-#### 2×2列联表检验
+#### m×n列联表检验
 
 ```bash
-# 输入格式：a b c d 表示 [[a, b], [c, d]]
-python chi_square_calculator.py -t 20 10 5 15
-```
+# 2×2列联表（4个值）
+python chi_square_calculator.py -t "20 10 5 15"
 
-#### 2×2列联表检验 - 使用Yates校正
+# 3×2列联表（使用分号分隔行）
+python chi_square_calculator.py -t "20 10; 15 8; 12 5"
 
-```bash
-python chi_square_calculator.py -t 20 10 5 15 --yates
+# 2×3列联表（2行3列）
+python chi_square_calculator.py -t "15 8 12; 10 15 5"
 ```
 
 #### 哈温平衡检验
@@ -113,10 +122,11 @@ python chi_square_calculator.py -o 20 30 25 15 -a 0.01
 - `-e, --expected`: 期望频数（可选）
 - `-p, --proportions`: 期望比例（可选，必须和为1.0）
 
-#### 2×2列联表检验参数
+#### m×n列联表检验参数
 
-- `-t, --table`: 2×2列联表的4个值（必需，格式：a b c d）
-- `--yates`: 使用Yates连续性校正（可选）
+- `-t, --table`: 列联表值（必需）
+  - 2×2表：4个空格分隔的值（格式："a b c d"）
+  - m×n表：使用分号分隔行（格式："a b; c d; e f"）
 
 #### 哈温平衡检验参数
 
@@ -135,13 +145,12 @@ python chi_square_calculator.py -o 20 30 25 15 -a 0.01
 - 检验结论（拒绝或接受原假设）
 - 观察频数与期望频数对比表
 
-### 2×2列联表检验输出
+### m×n列联表检验输出
 
 计算器会输出：
 
 - 卡方统计量
-- 是否使用Yates校正
-- 自由度（2×2表固定为1）
+- 自由度（(行数-1) × (列数-1)）
 - p值
 - 显著性水平
 - 检验结论（变量是否相关）
@@ -191,15 +200,9 @@ E_ij = (行i总计 × 列j总计) / 总计
 
 χ² = Σ[(O_ij - E_ij)² / E_ij]
 
-#### Yates连续性校正
-
-当期望频数 < 5 时建议使用：
-
-χ² = Σ[(|O_ij - E_ij| - 0.5)² / E_ij]
-
 #### 自由度
 
-df = (行数 - 1) × (列数 - 1) = 1 （对于2×2表）
+df = (行数 - 1) × (列数 - 1)
 
 ### 哈温平衡检验
 
@@ -275,18 +278,17 @@ Category        Observed        Expected        Difference
 ============================================================
 ```
 
-### 2×2列联表检验示例
+### m×n列联表检验示例
 
 ```text
 ============================================================
-CHI-SQUARE TEST FOR 2×2 CONTINGENCY TABLE
+CHI-SQUARE TEST FOR 3×2 CONTINGENCY TABLE
 ============================================================
-Chi-square statistic: 18.1818
-  (with Yates' continuity correction)
-Degrees of freedom: 1
-P-value: 0.000020
+Chi-square statistic: 1.0965
+Degrees of freedom: 2
+P-value: 0.295441
 Significance level (α): 0.05
-Conclusion: Reject H0 (variables are associated)
+Conclusion: Fail to reject H0 (variables are independent)
 
 Observed Frequencies:
 ----------------------------------------
@@ -349,15 +351,15 @@ Expected Hardy-Weinberg Proportions:
    - 如果期望频数为0但观察频数不为0：卡方统计量为正无穷（拒绝原假设）
 4. 观察频数和期望频数（或比例）的长度必须相同
 
-### 2×2列联表检验
+### m×n列联表检验
 
 1. 所有频数必须为非负数
-2. 必须提供恰好4个值，表示2×2表
-3. **小样本注意事项：**
-   - 当任何期望频数 < 5时，建议使用Yates校正
-   - 程序会自动判断并提示是否使用了校正
-   - 可以手动指定 `--yates` 强制使用校正
+2. 表格必须至少有2行2列
+3. 所有行必须有相同的列数
 4. 总计不能为0
+5. **支持的格式：**
+   - 2×2表：4个空格分隔的值
+   - m×n表：使用分号分隔行，空格分隔列
 
 ### 哈温平衡检验
 
